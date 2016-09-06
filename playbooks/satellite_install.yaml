@@ -1,0 +1,84 @@
+- name: satellite - install sat server
+  hosts: newsat
+  remote_user: root
+
+## Set some facts.
+  tasks:
+    - set_fact: redhat_user=
+    - set_fact: redhat_pass=
+    - set_fact: sat_network="{{ ansible_default_ipv4["interface"] }}"
+    - set_fact: sat_hostname='newsat.tld'
+    - set_fact: sat_organization='MySatOrg'
+    - set_fact: sat_location='LOC'
+    - set_fact: sat_password='passwordGoesHere'
+
+    - name: look for subscriptions consumed
+      raw: subscription-manager list --consumed --matches *Satellite* --pool-only
+      register: sat_subpool_consumed
+
+    - name: look for subscriptions available
+      raw: subscription-manager list --all --available --matches *Satellite* --pool-only | xargs echo -n
+      register: sat_subpool_available
+
+    - name: Exit if no pool is found
+      fail: msg="No Satellite pool is available with your subscription."
+      when: (sat_subpool_available.stdout == "") and (sat_subpool_consumed.stdout == "")
+
+    - name: set hostname to newsat
+      raw: hostnamectl set-hostname "{{ sat_hostname }}"
+
+    - name: IF a pool is available, do so.
+      raw: "subscription-manager attach --pool={{ sat_subpool_available.stdout }}"
+      when: sat_subpool_available.stdout != ""
+
+    - name: IF we are already subscribed, say so.
+      debug: msg="we are already subscribed with entitlement pool {{ sat_subpool_consumed.stdout }}"
+      when: sat_subpool_consumed.stdout != ""
+
+    - name: install satellite
+      raw: "subscription-manager attach --pool={{ sat_subpool_available.stdout }}"
+      when: sat_subpool_available.stdout != ""
+
+    - name: disable all repos
+      raw: "subscription-manager repos --disable \"*\""
+
+    - name: enable specific repos we need
+      raw: subscription-manager repos --enable rhel-7-server-rpms --enable rhel-server-rhscl-7-rpms --enable rhel-7-server-satellite-6.2-rpms --enable rhel-7-server-satellite-tools-6.2-rpms
+
+    - name: yum clean all
+      raw: yum clean all
+
+    - name: yum repolist enabled
+      raw: yum repolist enabled
+
+    - name: yum install satellite
+      yum: name=satellite state=latest
+
+    - name: yum install hostname
+      yum: name=hostname state=latest
+
+    - name: satellite-installer command
+      raw: "satellite-installer --scenario satellite -v --foreman-initial-organization \"{{ sat_organization }}\" --foreman-initial-location \"{{ sat_location }}\" --foreman-admin-password \"{{ sat_password }}\" --capsule-puppet true --foreman-proxy-puppetca true --foreman-proxy-tftp true --enable-foreman-plugin-discovery"
+
+    - name: create directory for hammer
+      file: state=directory recurse=yes path=/root/.hammer
+
+    - name: motd
+      template: src=/etc/ansible/configs/satellite/cli_config.yml dest=/root/.hammer/cli_config.yml owner=root group=root mode=0600
+
+    - lineinfile:
+        dest=/root/.hammer/cli_config.yml
+        regexp=^.*URL.*$
+        line="  {{ ":" }}host{{ ":" }} \'https{{ ":" }}//{{ sat_hostname }}/\'"
+
+
+    - lineinfile:
+        dest=/root/.hammer/cli_config.yml
+        regexp=^.*PASS.*$
+        line="  {{ ":" }}password{{ ":" }} \'{{ sat_password }}\'"
+
+    - name: hammer command
+      raw: "hammer user update --login admin --default-location-id 1 --default-organization-id 1 --locations \"{{ sat_location }}\" --organizations \"{{ sat_organization }}\""
+
+    - name: enable firewall port for http
+      firewalld: service=RH-Satellite-6 immediate=true permanent=true state=enabled
