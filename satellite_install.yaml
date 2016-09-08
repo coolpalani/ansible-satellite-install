@@ -4,13 +4,8 @@
 
 ## Set some facts.
   tasks:
-    - set_fact: redhat_user=
-    - set_fact: redhat_pass=
-    - set_fact: sat_network="{{ ansible_default_ipv4["interface"] }}"
-    - set_fact: sat_hostname='newsat.tld'
-    - set_fact: sat_organization='MySatOrg'
-    - set_fact: sat_location='LOC'
-    - set_fact: sat_password='passwordGoesHere'
+
+    - include_vars: /etc/ansible/satellite_facts.yaml
 
     - name: look for subscriptions consumed
       raw: subscription-manager list --consumed --matches *Satellite* --pool-only

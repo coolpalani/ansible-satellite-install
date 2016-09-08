@@ -1,0 +1,23 @@
+# satellite_install.yaml calls for this file to be placed here:
+# /etc/ansible/satellite_facts.yaml
+
+# This should be your Red Hat login for entitlement
+redhat_user: my-login-name@redhat.com
+
+# This is your Red Hat password associated with the login above.
+redhat_pass: my-supersecret-redhat-password
+
+# Your FQDN of the new satellite server you are installing
+sat_hostname: mysatelliteserver.local
+
+# Set your ORG  (ex:  GoKEV)
+sat_organization: MyORG
+
+# Set your default LOCation (ex:  BNA)
+sat_location: MyLOC
+
+# This is your login password once Satellite is up and running:
+# http://"{{ ansible_default_ipv4["interface"] }}"
+# admin / (this password below)
+sat_password: sat-password
+
