@@ -1,0 +1,5 @@
+:foreman:
+  :host: 'URL'
+  :username: 'admin'
+  :password: 'PASS'
+
