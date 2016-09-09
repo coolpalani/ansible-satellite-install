@@ -7,6 +7,20 @@
 
     - include_vars: /etc/ansible/satellite_facts.yaml
 
+#    - name: register the machine
+#      raw:  subscription-manager register --username {{ redhat_user }} --password {{ redhat_pass }} --force --auto-attach
+
+    - name: set hostname to newsat
+      raw: hostnamectl set-hostname "{{ sat_hostname }}"
+
+    - name: hosts file with correct hostname
+      template: src=include/hosts dest=/etc/hosts owner=root group=root mode=0644
+
+    - lineinfile:
+        dest=/etc/hosts
+        regexp="^127.0.0.1 .*$"
+        line="127.0.0.1    {{ sat_hostname }} localhost localhost.localdomain localhost4 localhost4.localdomain4"
+
     - name: look for subscriptions consumed
       raw: subscription-manager list --consumed --matches *Satellite* --pool-only
       register: sat_subpool_consumed
@@ -18,9 +32,6 @@
     - name: Exit if no pool is found
       fail: msg="No Satellite pool is available with your subscription."
       when: (sat_subpool_available.stdout == "") and (sat_subpool_consumed.stdout == "")
-
-    - name: set hostname to newsat
-      raw: hostnamectl set-hostname "{{ sat_hostname }}"
 
     - name: IF a pool is available, do so.
       raw: "subscription-manager attach --pool={{ sat_subpool_available.stdout }}"
@@ -58,14 +69,13 @@
     - name: create directory for hammer
       file: state=directory recurse=yes path=/root/.hammer
 
-    - name: motd
+    - name: hammer config template
       template: src=include/cli_config.yml dest=/root/.hammer/cli_config.yml owner=root group=root mode=0600
 
     - lineinfile:
         dest=/root/.hammer/cli_config.yml
         regexp=^.*URL.*$
         line="  {{ ":" }}host{{ ":" }} \'https{{ ":" }}//{{ sat_hostname }}/\'"
-
 
     - lineinfile:
         dest=/root/.hammer/cli_config.yml
