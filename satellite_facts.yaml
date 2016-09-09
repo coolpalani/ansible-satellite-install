@@ -2,7 +2,7 @@
 # /etc/ansible/satellite_facts.yaml
 
 # This should be your Red Hat login for entitlement
-redhat_user: my-login-name@redhat.com
+redhat_user: my-redhat-login-name
 
 # This is your Red Hat password associated with the login above.
 redhat_pass: my-supersecret-redhat-password
@@ -20,4 +20,22 @@ sat_location: MyLOC
 # http://"{{ ansible_default_ipv4["interface"] }}"
 # admin / (this password below)
 sat_password: sat-password
+
+# The static IP you want set for the Satellite server
+sat_ipaddr: 192.168.1.100
+
+# The server from which Satellite gets its DNS
+sat_ns: 8.8.8.8
+
+# The lowest and highest DHCP available in the range
+sat_dhcp_lo: 192.168.1.201
+sat_dhcp_hi: 192.168.1.225
+
+# The gateway through which Satellite communicates
+sat_gateway: 192.168.1.1
+sat_netmask: 255.255.255.0
+
+# The DHCP server that assigns IPs
+sat_dhcpns: 192.168.1.1
+
 

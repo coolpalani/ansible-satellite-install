@@ -1,5 +1,5 @@
 - name: satellite - install sat server
-  hosts: newsat
+  hosts: rawsat
   remote_user: root
 
 ## Set some facts.
@@ -7,8 +7,8 @@
 
     - include_vars: /etc/ansible/satellite_facts.yaml
 
-#    - name: register the machine
-#      raw:  subscription-manager register --username {{ redhat_user }} --password {{ redhat_pass }} --force --auto-attach
+    - set_fact: eth_alias_name="{{ ansible_default_ipv4["alias"] }}"
+    - set_fact: eth_alias_path="/etc/sysconfig/network-scripts/ifcfg-{{ eth_alias_name }}"
 
     - name: set hostname to newsat
       raw: hostnamectl set-hostname "{{ sat_hostname }}"
@@ -19,13 +19,43 @@
     - lineinfile:
         dest=/etc/hosts
         regexp="^127.0.0.1 .*$"
-        line="127.0.0.1    {{ sat_hostname }} localhost localhost.localdomain localhost4 localhost4.localdomain4"
+        line="127.0.0.1   {{ sat_hostname }} localhost localhost.localdomain localhost4 localhost4.localdomain4"
+
+    - name: ifcfg config template
+      template: src=include/ifcfg-template dest="{{ eth_alias_path }}" owner=root group=root mode=0644
+
+    - lineinfile:
+        dest="{{ eth_alias_path }}"
+        regexp=^IPADDR
+        line="IPADDR={{ sat_ipaddr }}"
+
+    - lineinfile:
+        dest="{{ eth_alias_path }}"
+        regexp=^GATEWAY
+        line="GATEWAY={{ sat_gateway }}"
+
+    - lineinfile:
+        dest="{{ eth_alias_path }}"
+        regexp=^NETMASK
+        line="NETMASK={{ sat_netmask }}"
+
+    - lineinfile:
+        dest="{{ eth_alias_path }}"
+        regexp=^NAME
+        line="NAME=\"{{ eth_alias_name }}\""
+
+    - lineinfile:
+        dest="{{ eth_alias_path }}"
+        regexp=^DEVICE
+        line="DEVICE=\"{{ eth_alias_name }}\""
+
+    - name: register the machine
+      raw:  subscription-manager register --username {{ redhat_user }} --password {{ redhat_pass }} --force --auto-attach
 
 
-## This module is not yet working for our purpose, but I'm leaving it in here in hopes...
-##	https://github.com/ansible/ansible-modules-core/issues/3300
-##
-
+# This module is not yet working for our purpose, but I'm leaving it in here in hopes...
+#	https://github.com/ansible/ansible-modules-core/issues/3300
+#
 #    - redhat_subscription:
 #        username={{ redhat_user }}
 #        password={{ redhat_pass }}
@@ -43,21 +73,17 @@
       raw: subscription-manager list --all --available --matches *Satellite* --pool-only | xargs echo -n
       register: sat_subpool_available
 
-    - name: Exit if no pool is found available OR subscribed
+    - name: CONDITION no pool available and no pool consumed -- we exit with message.
       fail: msg="No Satellite pool is available with your subscription."
       when: (sat_subpool_available.stdout == "") and (sat_subpool_consumed.stdout == "")
 
-    - name: IF a pool is available, do so.
-      raw: "subscription-manager attach --pool={{ sat_subpool_available.stdout }}"
-      when: sat_subpool_available.stdout != ""
-
-    - name: IF we are already subscribed, say so.
+    - name: CONDITION a pool is already consumed -- we announce it and keep going.
       debug: msg="we are already subscribed with pool {{ sat_subpool_consumed.stdout }}"
       when: sat_subpool_consumed.stdout != ""
 
-    - name: attach pool for satellite
-      raw: "subscription-manager attach --force --pool={{ sat_subpool_available.stdout }}"
-      when: sat_subpool_available.stdout != ""
+    - name: CONDITION a pool is available but no pool is currently consumed -- we attach the pool and keep going.
+      raw: "subscription-manager attach --pool={{ sat_subpool_available.stdout }}"
+      when: (sat_subpool_available.stdout != "") and (sat_subpool_consumed.stdout == "")
 
     - name: disable all repos
       raw: "subscription-manager repos --disable \"*\""
@@ -67,9 +93,6 @@
 
     - name: yum clean all
       raw: yum clean all
-
-    - name: yum repolist enabled
-      raw: yum repolist enabled
 
     - name: yum install satellite
       yum: name=satellite state=latest
