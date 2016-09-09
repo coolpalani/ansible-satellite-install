@@ -21,6 +21,20 @@
         regexp="^127.0.0.1 .*$"
         line="127.0.0.1    {{ sat_hostname }} localhost localhost.localdomain localhost4 localhost4.localdomain4"
 
+
+## This module is not yet working for our purpose, but I'm leaving it in here in hopes...
+##	https://github.com/ansible/ansible-modules-core/issues/3300
+##
+
+#    - redhat_subscription:
+#        username={{ redhat_user }}
+#        password={{ redhat_pass }}
+#        state=present
+#        autosubscribe=true
+#        pool="*Satellite*"
+#        pool='^(Satellite)$'
+
+
     - name: look for subscriptions consumed
       raw: subscription-manager list --consumed --matches *Satellite* --pool-only
       register: sat_subpool_consumed
@@ -29,7 +43,7 @@
       raw: subscription-manager list --all --available --matches *Satellite* --pool-only | xargs echo -n
       register: sat_subpool_available
 
-    - name: Exit if no pool is found
+    - name: Exit if no pool is found available OR subscribed
       fail: msg="No Satellite pool is available with your subscription."
       when: (sat_subpool_available.stdout == "") and (sat_subpool_consumed.stdout == "")
 
@@ -38,11 +52,11 @@
       when: sat_subpool_available.stdout != ""
 
     - name: IF we are already subscribed, say so.
-      debug: msg="we are already subscribed with entitlement pool {{ sat_subpool_consumed.stdout }}"
+      debug: msg="we are already subscribed with pool {{ sat_subpool_consumed.stdout }}"
       when: sat_subpool_consumed.stdout != ""
 
-    - name: install satellite
-      raw: "subscription-manager attach --pool={{ sat_subpool_available.stdout }}"
+    - name: attach pool for satellite
+      raw: "subscription-manager attach --force --pool={{ sat_subpool_available.stdout }}"
       when: sat_subpool_available.stdout != ""
 
     - name: disable all repos
