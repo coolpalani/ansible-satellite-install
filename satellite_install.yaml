@@ -100,8 +100,11 @@
     - name: yum install hostname
       yum: name=hostname state=latest
 
+#    - name: generate puppet certs
+#      raw: "puppet cert generate \"{{ sat_hostname }}\""
+
     - name: satellite-installer command
-      raw: "satellite-installer --scenario satellite -v --foreman-initial-organization \"{{ sat_organization }}\" --foreman-initial-location \"{{ sat_location }}\" --foreman-admin-password \"{{ sat_password }}\" --capsule-puppet true --foreman-proxy-puppetca true --foreman-proxy-tftp true --enable-foreman-plugin-discovery"
+      raw: "satellite-installer --scenario satellite --foreman-initial-organization \"{{ sat_organization }}\" --foreman-initial-location \"{{ sat_location }}\" --foreman-admin-password \"{{ sat_password }}\" --capsule-puppet true --foreman-proxy-puppetca true --foreman-proxy-tftp true --enable-foreman-plugin-discovery"
 
     - name: create directory for hammer
       file: state=directory recurse=yes path=/root/.hammer
