@@ -55,7 +55,7 @@
         line="DEVICE=\"{{ eth_alias_name }}\""
 
     - name: motd
-      template: src=includes/motd_satellite dest=/etc/motd owner=root group=root mode=0644
+      template: src=include/motd_satellite dest=/etc/motd owner=root group=root mode=0644
 
     - lineinfile: 
         dest=/etc/motd

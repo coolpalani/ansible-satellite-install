@@ -55,7 +55,7 @@
         line="DEVICE=\"{{ eth_alias_name }}\""
 
     - name: motd
-      template: src=includes/motd_capsule dest=/etc/motd owner=root group=root mode=0644
+      template: src=include/motd_capsule dest=/etc/motd owner=root group=root mode=0644
 
     - lineinfile: 
         dest=/etc/motd
@@ -65,7 +65,7 @@
     - lineinfile: 
         dest=/etc/motd
         regexp=^IPADDRESS
-        line="                    IP ADDRESS ===>  {{ cap__ipaddr }} "
+        line="                    IP ADDRESS ===>  {{ cap_ipaddr }} "
 
     - name: register the machine
       raw:  subscription-manager register --username admin --password "{{ sat_password }}" --force --auto-attach --org "{{ sat_organization }}"
