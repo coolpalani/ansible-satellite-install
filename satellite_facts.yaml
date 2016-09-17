@@ -9,6 +9,7 @@ redhat_pass: my-supersecret-redhat-password
 
 # Your FQDN of the new satellite server you are installing
 sat_hostname: mysatelliteserver.local
+cap_hostname: mycapsuleserver.local
 
 # Set your ORG  (ex:  GoKEV)
 sat_organization: MyORG
@@ -20,6 +21,9 @@ sat_location: MyLOC
 # http://"{{ ansible_default_ipv4["interface"] }}"
 # admin / (this password below)
 sat_password: sat-password
+
+###########################################
+### Some satellite network settings
 
 # The static IP you want set for the Satellite server
 sat_ipaddr: 192.168.1.100
@@ -37,5 +41,17 @@ sat_netmask: 255.255.255.0
 
 # The DHCP server that assigns IPs
 sat_dhcpns: 192.168.1.1
+
+
+###########################################
+### Some capsule network settings
+
+# The gateway through which capsule communicates
+cap_ipaddr: 192.168.2.100
+cap_gateway: 192.168.2.1
+cap_netmask: 255.255.255.0
+
+# The DHCP server that assigns IPs
+cap_dhcpns: 192.168.2.1
 
 
