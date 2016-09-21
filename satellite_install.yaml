@@ -65,7 +65,7 @@
     - lineinfile: 
         dest=/etc/motd
         regexp=^IPADDRESS
-        line="                    IP ADDRESS ===>  {{ sat__ipaddr }} "
+        line="                    IP ADDRESS ===>  {{ sat_ipaddr }} "
 
     - name: register the machine
       raw:  subscription-manager register --username {{ redhat_user }} --password {{ redhat_pass }} --force --auto-attach

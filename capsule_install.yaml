@@ -67,9 +67,6 @@
         regexp=^IPADDRESS
         line="                    IP ADDRESS ===>  {{ cap_ipaddr }} "
 
-    - name: register the machine
-      raw:  subscription-manager register --username admin --password "{{ sat_password }}" --force --auto-attach --org "{{ sat_organization }}"
-
     - name: get the satellite server certificates
       get_url:  url="https://{{ sat_hostname }}/pub/katello-ca-consumer-latest.noarch.rpm" dest=/root owner=root group=root mode=644 validate_certs=no
 
@@ -77,6 +74,9 @@
       yum:
         name: /root/katello-ca-consumer-latest.noarch.rpm
         state: present
+
+    - name: register the machine
+      raw: "subscription-manager register --username admin --password {{ sat_password }} --force --auto-attach --org {{ sat_organization }}"
 
     - name: yum install nano     
       yum: name=nano state=latest
