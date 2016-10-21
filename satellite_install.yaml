@@ -2,11 +2,12 @@
   hosts: satellite
   remote_user: root
 
-    vars:
-      install_packages:
-        - nano
-        - satellite
-        - hostname
+
+  vars:
+    install_packages:
+      - nano
+      - satellite
+      - hostname
 
 
     tasks:
@@ -26,7 +27,7 @@
 
     - name: motd
       template: src=include/motd_satellite dest=/etc/motd owner=root group=root mode=0644
-	  
+
     - name: register the machine
       raw:  subscription-manager register --username {{ redhat_user }} --password {{ redhat_pass }} --force --auto-attach
 
@@ -71,7 +72,7 @@
     - name: yum clean all
       raw: yum clean all
 
-    - name: install packages with yum:  "{{ install_packages }}"
+    - name: install packages with yum
       yum:
         name: "{{ item }}"
         state: present
@@ -81,7 +82,7 @@
     - name: remove old Puppet certificates
     - file: path=/var/lib/puppet/ssl/ state=absent
 
-    - name: generate puppet certs	
+    - name: generate puppet certs
       raw: "puppet cert generate \"{{ sat_hostname }}\""
 
     - name: NON-DHCP SERVER install
@@ -89,7 +90,7 @@
       when: ( {{ sat_dhcp_lo }}  == "") or ( {{ sat_dhcp_hi }} == "")
 
     - name: SAT-AS-A-DHCP SERVER install
-      raw: "satellite-installer --scenario satellite --foreman-initial-organization \"{{ sat_organization }}\" --foreman-initial-location \"{{ sat_location }}\" --foreman-admin-password \"{{ sat_password }}\" --capsule-puppet true --foreman-proxy-puppetca true --foreman-proxy-tftp true --enable-foreman-plugin-discovery" --foreman-proxy-dns true --foreman-proxy-dns-interface \"{{ eth_alias_name }}\" --foreman-proxy-dns-zone \"{{ sat_domain }}\" --foreman-proxy-dns-forwarders \"{{ sat_gateway }}\" --foreman-proxy-dns-reverse \"{{ sat_zone_arpa }}\" --foreman-proxy-dhcp true --foreman-proxy-dhcp-interface \"{{ eth_alias_name }}\" --foreman-proxy-dhcp-range \"{{ sat_dhcp_lo }} {{ sat_dhcp_hi }}\" --foreman-proxy-dhcp-gateway \"{{ sat_gateway }}\" --foreman-proxy-dhcp-nameservers \"{{ 192.168.1.100 }}\" --foreman-proxy-tftp true --foreman-proxy-tftp-servername \"{{ sat_hostname }}\"
+      raw: "satellite-installer --scenario satellite --foreman-initial-organization \"{{ sat_organization }}\" --foreman-initial-location \"{{ sat_location }}\" --foreman-admin-password \"{{ sat_password }}\" --capsule-puppet true --foreman-proxy-puppetca true --foreman-proxy-tftp true --enable-foreman-plugin-discovery --foreman-proxy-dns true --foreman-proxy-dns-interface \"{{ eth_alias_name }}\" --foreman-proxy-dns-zone \"{{ sat_domain }}\" --foreman-proxy-dns-forwarders \"{{ sat_gateway }}\" --foreman-proxy-dns-reverse \"{{ sat_zone_arpa }}\" --foreman-proxy-dhcp true --foreman-proxy-dhcp-interface \"{{ eth_alias_name }}\" --foreman-proxy-dhcp-range \"{{ sat_dhcp_lo }} {{ sat_dhcp_hi }}\" --foreman-proxy-dhcp-gateway \"{{ sat_gateway }}\" --foreman-proxy-dhcp-nameservers \"{{ 192.168.1.100 }}\" --foreman-proxy-tftp true --foreman-proxy-tftp-servername \"{{ sat_hostname }}\" "
       when: ( {{ sat_dhcp_lo }}  != "") and ( {{ sat_dhcp_hi }} != "")
 
     - name: create directory for hammer
@@ -112,13 +113,13 @@
 #Create a daily sync plan:
 #hammer sync-plan create --interval=daily --name='Daily sync' --organization=fite.cat.lab
 
-    - name: enable firewall ports for satellite6 http, https, tftp services
-      firewalld: service=RH-Satellite-6 immediate=true permanent=true state=enabled
-      firewalld: service=http immediate=true permanent=true state=enabled
-      firewalld: service=https immediate=true permanent=true state=enabled
-      firewalld: service=tftp immediate=true permanent=true state=enabled
-      firewalld: port=5674/tcp immediate=true permanent=true state=enabled
+#    - name: enable firewall ports for satellite6 http, https, tftp services
+    - firewalld: service=RH-Satellite-6 immediate=true permanent=true state=enabled
+    - firewalld: service=http immediate=true permanent=true state=enabled
+    - firewalld: service=https immediate=true permanent=true state=enabled
+    - firewalld: service=tftp immediate=true permanent=true state=enabled
+    - firewalld: port=5674/tcp immediate=true permanent=true state=enabled
 
-    - name: enable firewall ports for satellite6 DNS and DHCP services
-      firewalld: service=dns immediate=true permanent=true state=enabled
-      firewalld: service=dhcp immediate=true permanent=true state=enabled
+#    - name: enable firewall ports for satellite6 DNS and DHCP services
+    - firewalld: service=dns immediate=true permanent=true state=enabled
+    - firewalld: service=dhcp immediate=true permanent=true state=enabled
