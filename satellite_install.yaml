@@ -2,9 +2,14 @@
   hosts: satellite
   remote_user: root
 
-## Set some facts.
-  tasks:
+    vars:
+      install_packages:
+        - nano
+        - satellite
+        - hostname
 
+
+    tasks:
     - include_vars: /etc/ansible/satellite_facts.yaml
 
     - set_fact: eth_alias_name="{{ ansible_default_ipv4["alias"] }}"
@@ -14,62 +19,16 @@
       raw: hostnamectl set-hostname "{{ sat_hostname }}"
 
     - name: hosts file with correct hostname
-      template: src=include/hosts dest=/etc/hosts owner=root group=root mode=0644
-
-    - lineinfile:
-        dest=/etc/hosts
-        regexp="^127.0.0.1 .*$"
-        line="127.0.0.1   {{ sat_hostname }} localhost localhost.localdomain localhost4 localhost4.localdomain4"
-
-    - lineinfile:
-        dest=/etc/hosts
-        regexp="^#OTHERSERVERNAME.*$"
-        line="{{ cap_ipaddr }}   {{ cap_hostname }}"
+      template: src=include/hosts_sat dest=/etc/hosts owner=root group=root mode=0644
 
     - name: ifcfg config template
       template: src=include/ifcfg-template dest="{{ eth_alias_path }}" owner=root group=root mode=0644
 
-    - lineinfile:
-        dest="{{ eth_alias_path }}"
-        regexp=^IPADDR
-        line="IPADDR={{ sat_ipaddr }}"
-
-    - lineinfile:
-        dest="{{ eth_alias_path }}"
-        regexp=^GATEWAY
-        line="GATEWAY={{ sat_gateway }}"
-
-    - lineinfile:
-        dest="{{ eth_alias_path }}"
-        regexp=^NETMASK
-        line="NETMASK={{ sat_netmask }}"
-
-    - lineinfile:
-        dest="{{ eth_alias_path }}"
-        regexp=^NAME
-        line="NAME=\"{{ eth_alias_name }}\""
-
-    - lineinfile:
-        dest="{{ eth_alias_path }}"
-        regexp=^DEVICE
-        line="DEVICE=\"{{ eth_alias_name }}\""
-
     - name: motd
       template: src=include/motd_satellite dest=/etc/motd owner=root group=root mode=0644
-
-    - lineinfile: 
-        dest=/etc/motd
-        regexp=^HOSTNAME
-        line="                     HOSTNAME  ===>  {{ sat_hostname }} "
-
-    - lineinfile: 
-        dest=/etc/motd
-        regexp=^IPADDRESS
-        line="                    IP ADDRESS ===>  {{ sat_ipaddr }} "
-
+	  
     - name: register the machine
       raw:  subscription-manager register --username {{ redhat_user }} --password {{ redhat_pass }} --force --auto-attach
-
 
 # This module is not yet working for our purpose, but I'm leaving it in here in hopes...
 #	https://github.com/ansible/ansible-modules-core/issues/3300
@@ -112,20 +71,26 @@
     - name: yum clean all
       raw: yum clean all
 
-    - name: yum install nano
-      yum: name=nano state=latest
+    - name: install packages with yum:  "{{ install_packages }}"
+      yum:
+        name: "{{ item }}"
+        state: present
+      with_items: "{{ install_packages }}"
+      ignore_errors: yes
 
-    - name: yum install satellite
-      yum: name=satellite state=latest
+    - name: remove old Puppet certificates
+    - file: path=/var/lib/puppet/ssl/ state=absent
 
-    - name: yum install hostname
-      yum: name=hostname state=latest
+    - name: generate puppet certs	
+      raw: "puppet cert generate \"{{ sat_hostname }}\""
 
-#    - name: generate puppet certs
-#      raw: "puppet cert generate \"{{ sat_hostname }}\""
-
-    - name: satellite-installer command
+    - name: NON-DHCP SERVER install
       raw: "satellite-installer --scenario satellite --foreman-initial-organization \"{{ sat_organization }}\" --foreman-initial-location \"{{ sat_location }}\" --foreman-admin-password \"{{ sat_password }}\" --capsule-puppet true --foreman-proxy-puppetca true --foreman-proxy-tftp true --enable-foreman-plugin-discovery"
+      when: ( {{ sat_dhcp_lo }}  == "") or ( {{ sat_dhcp_hi }} == "")
+
+    - name: SAT-AS-A-DHCP SERVER install
+      raw: "satellite-installer --scenario satellite --foreman-initial-organization \"{{ sat_organization }}\" --foreman-initial-location \"{{ sat_location }}\" --foreman-admin-password \"{{ sat_password }}\" --capsule-puppet true --foreman-proxy-puppetca true --foreman-proxy-tftp true --enable-foreman-plugin-discovery" --foreman-proxy-dns true --foreman-proxy-dns-interface \"{{ eth_alias_name }}\" --foreman-proxy-dns-zone \"{{ sat_domain }}\" --foreman-proxy-dns-forwarders \"{{ sat_gateway }}\" --foreman-proxy-dns-reverse \"{{ sat_zone_arpa }}\" --foreman-proxy-dhcp true --foreman-proxy-dhcp-interface \"{{ eth_alias_name }}\" --foreman-proxy-dhcp-range \"{{ sat_dhcp_lo }} {{ sat_dhcp_hi }}\" --foreman-proxy-dhcp-gateway \"{{ sat_gateway }}\" --foreman-proxy-dhcp-nameservers \"{{ 192.168.1.100 }}\" --foreman-proxy-tftp true --foreman-proxy-tftp-servername \"{{ sat_hostname }}\"
+      when: ( {{ sat_dhcp_lo }}  != "") and ( {{ sat_dhcp_hi }} != "")
 
     - name: create directory for hammer
       file: state=directory recurse=yes path=/root/.hammer
@@ -133,22 +98,11 @@
     - name: hammer config template
       template: src=include/cli_config.yml dest=/root/.hammer/cli_config.yml owner=root group=root mode=0600
 
-    - lineinfile:
-        dest=/root/.hammer/cli_config.yml
-        regexp=^.*URL.*$
-        line="  {{ ":" }}host{{ ":" }} \'https{{ ":" }}//{{ sat_hostname }}/\'"
-
-    - lineinfile:
-        dest=/root/.hammer/cli_config.yml
-        regexp=^.*PASS.*$
-        line="  {{ ":" }}password{{ ":" }} \'{{ sat_password }}\'"
-
-    - name: hammer command
+    - name: hammer update user to default org and location
       raw: "hammer user update --login admin --default-location-id 1 --default-organization-id 1 --locations \"{{ sat_location }}\" --organizations \"{{ sat_organization }}\""
 
     - name: generate certs for capsule
       raw: "capsule-certs-generate --capsule-fqdn \"{{ cap_hostname }}\" --certs-tar /root/\"{{ cap_hostname }}\"-certs.tar"
-
 
 
 ## Not working yet, but soon:
@@ -158,6 +112,13 @@
 #Create a daily sync plan:
 #hammer sync-plan create --interval=daily --name='Daily sync' --organization=fite.cat.lab
 
-
-    - name: enable firewall port for satellite6
+    - name: enable firewall ports for satellite6 http, https, tftp services
       firewalld: service=RH-Satellite-6 immediate=true permanent=true state=enabled
+      firewalld: service=http immediate=true permanent=true state=enabled
+      firewalld: service=https immediate=true permanent=true state=enabled
+      firewalld: service=tftp immediate=true permanent=true state=enabled
+      firewalld: port=5674/tcp immediate=true permanent=true state=enabled
+
+    - name: enable firewall ports for satellite6 DNS and DHCP services
+      firewalld: service=dns immediate=true permanent=true state=enabled
+      firewalld: service=dhcp immediate=true permanent=true state=enabled

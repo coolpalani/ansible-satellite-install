@@ -1,5 +1,4 @@
 :foreman:
-  :host: 'URL'
+  :host: 'https://{{ sat_hostname }}/'
   :username: 'admin'
-  :password: 'PASS'
-
+  :password: '{{ sat_password }}'
