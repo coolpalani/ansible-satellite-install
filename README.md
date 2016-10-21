@@ -8,10 +8,10 @@ The IP and hostname entered in the satellite_facts.yaml will be set statically. 
 
 
 1. new RHEL builds from latest RHEL7 ISO, basic packages (recommendations might not match official recommendations.  I'll fix eventually)
-- satellite and capsule both recommend identical hardware configuration:
- --200GB storage for repos
- --16GB RAM
- --2 CPU
+  *satellite and capsule both recommend identical hardware configuration:
+  *200GB storage for repos
+  *16GB RAM
+  *2 CPU
 
 2. power down the machine, snapshot the VMs so you can lather, rinse, repeat if necessary
 
